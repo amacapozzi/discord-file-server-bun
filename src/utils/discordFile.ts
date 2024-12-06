@@ -30,12 +30,9 @@ export async function* readFile(file: BunFile, chunkSize: number) {
   }
 }
 
-export const uploadFile = async (filePath: string): Promise<void> => {
-  const fileName = filePath.split("/").pop() || "file";
-  const file = Bun.file(filePath);
-
+export const uploadFileToDiscord = async (file: BunFile): Promise<void> => {
   const formData = new FormData();
-  formData.append("file", file, fileName);
+  formData.append("file", file, file.name?.toString());
 
   try {
     const response = await performFetch(WEBHOOK_URL, {
@@ -47,19 +44,23 @@ export const uploadFile = async (filePath: string): Promise<void> => {
       throw new Error(`Failed to upload the file: ${response.statusText}`);
     }
 
-    console.log(`File ${fileName} uploaded successfully`);
+    console.log(`File uploaded successfully`);
   } catch (error) {
     console.error(`Error uploading the file:`, error);
   }
 };
 export const uploadFileInChunks = async (file: BunFile): Promise<void> => {
   const totalSize = file.size;
-  const fileName = "file";
+  const totalParts = Math.ceil(totalSize / FILE_CHUNK_SIZE);
 
-  console.log(`Starting upload of ${fileName} (${totalSize} bytes)`);
+  const fileName = "file";
 
   const chunks = readFile(file, FILE_CHUNK_SIZE);
   let partNumber = 1;
+
+  console.log(
+    `Starting upload of ${fileName} (${totalSize} bytes) parts (${partNumber}/${totalParts})`
+  );
 
   for await (const chunk of chunks) {
     const compressedChunk = compressData(new Uint8Array(chunk));
