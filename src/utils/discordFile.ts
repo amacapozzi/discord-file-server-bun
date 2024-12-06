@@ -1,0 +1,99 @@
+import { statSync } from "fs";
+import { BunFile, gzipSync } from "bun";
+import { fetch } from "bun";
+import { fetchRateLimit } from "./fetchHelper";
+
+const WEBHOOK_URL =
+  "https://discord.com/api/webhooks/1314641287290552402/Gept9U3NWzx8pLvrjHzkjfDU9cFMb70UPjfv0kX4gAQyYVVxF5cSOINFh04hEeyVh-nt";
+const FILE_CHUNK_SIZE = 25 * 1024 * 1023;
+
+export const performFetch = async (
+  url: string,
+  options: RequestInit
+): Promise<Response> => {
+  return await fetch(url, options);
+};
+
+const compressData = (data: Uint8Array): Uint8Array => {
+  return gzipSync(data);
+};
+
+export async function* readFile(file: BunFile, chunkSize: number) {
+  const fileSize = file.size;
+  let offset = 0;
+
+  while (offset < fileSize) {
+    const blob = file.slice(offset, offset + chunkSize);
+
+    yield await blob.arrayBuffer();
+    offset += chunkSize;
+  }
+}
+
+export const uploadFile = async (filePath: string): Promise<void> => {
+  const fileName = filePath.split("/").pop() || "file";
+  const file = Bun.file(filePath);
+
+  const formData = new FormData();
+  formData.append("file", file, fileName);
+
+  try {
+    const response = await performFetch(WEBHOOK_URL, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload the file: ${response.statusText}`);
+    }
+
+    console.log(`File ${fileName} uploaded successfully`);
+  } catch (error) {
+    console.error(`Error uploading the file:`, error);
+  }
+};
+export const uploadFileInChunks = async (file: BunFile): Promise<void> => {
+  const totalSize = file.size;
+  const fileName = "file";
+
+  console.log(`Starting upload of ${fileName} (${totalSize} bytes)`);
+
+  const chunks = readFile(file, FILE_CHUNK_SIZE);
+  let partNumber = 1;
+
+  for await (const chunk of chunks) {
+    const compressedChunk = compressData(new Uint8Array(chunk));
+
+    const tempFileName = `${fileName}.part${partNumber}.gz`;
+
+    const tempFile = Bun.file(tempFileName);
+    const writer = tempFile.writer();
+
+    await writer.write(compressedChunk);
+    writer.end();
+
+    const formData = new FormData();
+    formData.append("file", tempFile);
+
+    try {
+      const response = await fetchRateLimit(WEBHOOK_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to upload part ${partNumber} ${response.statusText}`
+        );
+      }
+
+      console.log(`Part ${partNumber} compressed`);
+    } catch (error) {
+      console.error(`Error uploading part ${partNumber}:`, error);
+    }
+
+    partNumber++;
+  }
+
+  console.log(`Upload of ${fileName} completed in ${partNumber - 1} parts.`);
+};
