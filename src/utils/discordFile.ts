@@ -2,6 +2,7 @@ import { statSync } from "fs";
 import { BunFile, gzipSync } from "bun";
 import { fetch } from "bun";
 import { fetchRateLimit } from "./fetchHelper";
+import { Encoder } from "./encoderHelper";
 
 const WEBHOOK_URL =
   "https://discord.com/api/webhooks/1314641287290552402/Gept9U3NWzx8pLvrjHzkjfDU9cFMb70UPjfv0kX4gAQyYVVxF5cSOINFh04hEeyVh-nt";
@@ -67,9 +68,25 @@ export const uploadFileInChunks = async (file: BunFile): Promise<void> => {
 
     const tempFileName = `${fileName}.part${partNumber}.gz`;
 
-    const formData = new FormData();
-    formData.append("file", new Blob([compressedChunk]), tempFileName);
+    /*    const content = "mESSAGE";
+     */
 
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new Blob([compressedChunk]),
+      Encoder.encodeAttachmentName(
+        "1280960261892608102",
+        partNumber,
+        totalParts
+      )
+    );
+    /*    formData.append(
+      "payload_json",
+      JSON.stringify({
+        content,
+      })
+    ); */
     try {
       const response = await fetchRateLimit(WEBHOOK_URL, {
         method: "POST",
