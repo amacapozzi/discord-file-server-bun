@@ -5,7 +5,7 @@ import { fetchRateLimit } from "./fetchHelper";
 
 const WEBHOOK_URL =
   "https://discord.com/api/webhooks/1314641287290552402/Gept9U3NWzx8pLvrjHzkjfDU9cFMb70UPjfv0kX4gAQyYVVxF5cSOINFh04hEeyVh-nt";
-const FILE_CHUNK_SIZE = 25 * 1024 * 1023;
+const MAX_COMPRESSED_SIZE = 10 * 1024 * 1024;
 
 export const performFetch = async (
   url: string,
@@ -51,11 +51,11 @@ export const uploadFileToDiscord = async (file: BunFile): Promise<void> => {
 };
 export const uploadFileInChunks = async (file: BunFile): Promise<void> => {
   const totalSize = file.size;
-  const totalParts = Math.ceil(totalSize / FILE_CHUNK_SIZE);
+  const totalParts = Math.ceil(totalSize / MAX_COMPRESSED_SIZE);
 
   const fileName = "file";
 
-  const chunks = readFile(file, FILE_CHUNK_SIZE);
+  const chunks = readFile(file, MAX_COMPRESSED_SIZE);
   let partNumber = 1;
 
   console.log(
@@ -67,20 +67,16 @@ export const uploadFileInChunks = async (file: BunFile): Promise<void> => {
 
     const tempFileName = `${fileName}.part${partNumber}.gz`;
 
-    const tempFile = Bun.file(tempFileName);
-    const writer = tempFile.writer();
-
-    await writer.write(compressedChunk);
-    writer.end();
-
     const formData = new FormData();
-    formData.append("file", tempFile);
+    formData.append("file", new Blob([compressedChunk]), tempFileName);
 
     try {
-      const response = await fetchRateLimit(WEBHOOK_URL, {
+      const response = await fetch(WEBHOOK_URL, {
         method: "POST",
         body: formData,
       });
+
+      console.log(response.status);
 
       if (!response.ok) {
         throw new Error(

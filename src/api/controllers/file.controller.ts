@@ -1,9 +1,5 @@
 import { BunFile } from "bun";
-import {
-  readFile,
-  uploadFileInChunks,
-  uploadFileToDiscord,
-} from "../../utils/discordFile";
+import { uploadFileInChunks } from "../../utils/discordFile";
 import { getFileSizeInMB } from "../../utils/sizeHelper";
 
 export const uploadFile = async (filePath: string) => {
@@ -11,7 +7,8 @@ export const uploadFile = async (filePath: string) => {
     const size = getFileSizeInMB(Bun.file(filePath));
     if (size > 25) {
       uploadFileInChunks(Bun.file(filePath));
+      return;
     }
-    uploadFileToDiscord(Bun.file(filePath));
+    uploadFileInChunks(Bun.file(filePath));
   } catch {}
 };
