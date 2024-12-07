@@ -1,15 +1,18 @@
 export const fetchRateLimit = async (
   url: string,
-  options: RequestInit
+  options: RequestInit,
+  maxRetries = 5
 ): Promise<Response> => {
   let rateLimitWait = 0;
-
-  const sleep = (ms: number) =>
-    new Promise((resolve) => setTimeout(resolve, ms));
+  let retries = 0;
 
   while (true) {
+    if (retries > maxRetries) {
+      throw new Error("Max retries reached");
+    }
+
     if (rateLimitWait > 0) {
-      console.log(`waitng ${rateLimitWait}ms for rate limit to reset`);
+      console.log(`Waiting ${rateLimitWait}ms for rate limit to reset`);
       await sleep(rateLimitWait);
     }
 
@@ -28,13 +31,16 @@ export const fetchRateLimit = async (
       const retryAfter = responseJson.retry_after;
       rateLimitWait = retryAfter * 1000;
       console.log("Rate limit exceeded");
+      retries++;
       continue;
     }
 
     if (status >= 400) {
-      throw new Error(`request failed ${await response.text()}`);
+      throw new Error(`Request failed: ${await response.text()}`);
     }
 
     return response;
   }
 };
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

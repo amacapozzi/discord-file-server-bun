@@ -71,7 +71,7 @@ export const uploadFileInChunks = async (file: BunFile): Promise<void> => {
     formData.append("file", new Blob([compressedChunk]), tempFileName);
 
     try {
-      const response = await fetch(WEBHOOK_URL, {
+      const response = await fetchRateLimit(WEBHOOK_URL, {
         method: "POST",
         body: formData,
       });
