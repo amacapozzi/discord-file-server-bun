@@ -8,13 +8,6 @@ const WEBHOOK_URL =
   "https://discord.com/api/webhooks/1314641287290552402/Gept9U3NWzx8pLvrjHzkjfDU9cFMb70UPjfv0kX4gAQyYVVxF5cSOINFh04hEeyVh-nt";
 const MAX_COMPRESSED_SIZE = 10 * 1024 * 1024;
 
-export const performFetch = async (
-  url: string,
-  options: RequestInit
-): Promise<Response> => {
-  return await fetch(url, options);
-};
-
 const compressData = (data: Uint8Array): Uint8Array => {
   return gzipSync(data);
 };
@@ -31,25 +24,6 @@ export async function* readFile(file: BunFile, chunkSize: number) {
   }
 }
 
-export const uploadFileToDiscord = async (file: BunFile): Promise<void> => {
-  const formData = new FormData();
-  formData.append("file", file, file.name?.toString());
-
-  try {
-    const response = await performFetch(WEBHOOK_URL, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to upload the file: ${response.statusText}`);
-    }
-
-    console.log(`File uploaded successfully`);
-  } catch (error) {
-    console.error(`Error uploading the file:`, error);
-  }
-};
 export const uploadFileInChunks = async (file: BunFile): Promise<void> => {
   const totalSize = file.size;
   const totalParts = Math.ceil(totalSize / MAX_COMPRESSED_SIZE);
