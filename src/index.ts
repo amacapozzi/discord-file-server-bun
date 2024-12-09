@@ -1,15 +1,15 @@
 import { Hono } from "hono";
 import { uploadFile } from "./api/controllers/file.controller";
+import { createMongooseConnection } from "./lib/mongoose";
+import { fileRouter } from "./api/routes/file.router";
+import { uploadFileInChunks } from "./utils/discordFile";
 
 const app = new Hono();
 
-app.get("/", (c) => {
-  uploadFile("Frame42.png");
-  return c.text("Hello Hono!");
-});
+app.route("/file", fileRouter);
 
-//uploadFile("config.exe");
-//downloadAndReconstructFile("recover.exe");
-//uploadCompressedFile("essential-installer-3.0.4.exe");
+uploadFileInChunks(Bun.file("C:\\Users\\Student\\Downloads\\config.exe"));
+
+createMongooseConnection();
 
 export default app;
